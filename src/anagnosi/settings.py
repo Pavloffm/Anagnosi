@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     inbox_dir: str = "0001_inbox"
     calendar_dir: str = "0002_calendar"
     sources_dir: str = "0003_sources"
+    templates_dir: str = "0004_templates"
+    attachments_dir: str = "0005_attachments"
+    peoples_dir: str = "0006_peoples"
     archive_dir: str = "9999_archive"
 
     daily_dir: str = "0000_daily"
