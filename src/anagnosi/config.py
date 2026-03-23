@@ -6,20 +6,23 @@ from src.anagnosi.settings import settings
 class PathConfig:
     def __init__(self):
         self.base_path = settings.app_root_path
-        self.project_path = self.base_path / settings.dir_project
+        self.project_path = self.base_path / settings.project_dir
 
-        self.inbox = self.project_path / settings.dir_inbox
-        self.calendar = self.project_path / settings.dir_calendar
-        self.sources = self.project_path / settings.dir_sources
-        self.archive = self.project_path / settings.dir_archive
-        self.logs = self.base_path / "logs"
+        self.home_dir = self.project_path / settings.home_dir
+        self.inbox_dir = self.project_path / settings.inbox_dir
+        self.calendar_dir = self.project_path / settings.calendar_dir
+        self.sources_dir = self.project_path / settings.sources_dir
+        self.archive_dir = self.project_path / settings.archive_dir
 
-        self.daily = self.calendar / settings.daily_dir
-        self.weekly = self.calendar / settings.weekly_dir
-        self.monthly = self.calendar / settings.monthly_dir
-        self.quarterly = self.calendar / settings.quarterly_dir
-        self.yearly = self.calendar / settings.yearly_dir
+        self.daily_dir = self.calendar_dir / settings.daily_dir
+        self.weekly_dir = self.calendar_dir / settings.weekly_dir
+        self.monthly_dir = self.calendar_dir / settings.monthly_dir
+        self.quarterly_dir = self.calendar_dir / settings.quarterly_dir
+        self.yearly_dir = self.calendar_dir / settings.yearly_dir
 
-        self.all_directories = [self.project_path,self.inbox,self.calendar,self.sources,self.archive,self.logs,self.daily,self.weekly,self.monthly,self.quarterly,self.yearly]
+        self.file_home = self.home_dir / settings.home_file
+
+        self.all_directories = [self.project_path, self.home_dir, self.inbox_dir, self.calendar_dir, self.sources_dir, self.archive_dir, self.daily_dir, self.weekly_dir, self.monthly_dir, self.quarterly_dir, self.yearly_dir]
+        self.all_files = [self.file_home]
 
 paths = PathConfig()
