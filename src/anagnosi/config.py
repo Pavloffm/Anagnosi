@@ -8,6 +8,8 @@ class PathConfig:
         self.base_path = settings.app_root_path
         self.project_path = self.base_path / settings.project_dir
 
+        self.source_templates_dir = Path(__file__).parent.parent.parent / "src" / "templates"
+
         self.home_dir = self.project_path / settings.home_dir
         self.inbox_dir = self.project_path / settings.inbox_dir
         self.calendar_dir = self.project_path / settings.calendar_dir
