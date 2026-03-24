@@ -2,11 +2,11 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings
 
-from src.anagnosi.constants import ENV_FILE
-
+ENV_FILE = Path(__file__).parent.parent.parent / ".env"
 
 class Settings(BaseSettings):
     app_root_path: Path = Path.cwd()
+    hf_token: str = ""
 
     project_dir: str = "anagnosi_vault"
     home_dir: str = "0000_home"
