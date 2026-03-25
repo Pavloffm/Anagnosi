@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 ENV_FILE = Path(__file__).parent.parent.parent / ".env"
@@ -26,6 +27,13 @@ class Settings(BaseSettings):
     yearly_dir: str = "0004_yearly"
 
     home_file: str = "0000_home.md"
+
+    ollama_base_url: str = Field(default="http://localhost:11434", env="OLLAMA_BASE_URL")
+    ollama_default_model: str = Field(default="qwen3.5:4b", env="OLLAMA_DEFAULT_MODEL")
+
+    ollama_default_timeout: int = Field(default=120, env="OLLAMA_DEFAULT_TIMEOUT")
+    ollama_default_temperature: float = Field(default=0.1, env="OLLAMA_DEFAULT_TEMPERATURE")
+    ollama_default_num_ctx: int = Field(default=4096, env="OLLAMA_DEFAULT_NUM_CTX")
 
     class Config:
         env_file = ENV_FILE

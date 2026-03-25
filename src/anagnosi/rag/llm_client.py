@@ -1,17 +1,18 @@
-from typing import Optional
+import requests
 import torch
 from loguru import logger
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 
 from anagnosi.rag.prompt_generator import PromptGenerator
+from anagnosi.settings import settings
 
 
 class LocalTransformersLLM:
-    def __init__(self,model_name: str = "HuggingFaceTB/SmolLM2-135M-Instruct",device: str = "cuda" if torch.cuda.is_available() else "cpu"):
+    def __init__(self, model_name: str = "HuggingFaceTB/SmolLM2-135M-Instruct", device: str = "cuda" if torch.cuda.is_available() else "cpu"):
         logger.info(f"Loading model: {model_name} on {device}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name,dtype=torch.float16 if device == "cuda" else torch.float32,device_map="auto" if device == "cuda" else None)
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.float16 if device == "cuda" else torch.float32, device_map="auto" if device == "cuda" else None)
 
         self.pipe = pipeline(
             "text-generation",
@@ -35,8 +36,68 @@ class LocalTransformersLLM:
             logger.error(f"Generation error: {e}")
             return f"Error: {e}"
 
+
+class OllamaLLMClient:
+    def __init__(self, base_url: str, model: str, timeout: int, temperature: float, num_ctx: int):
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.timeout = timeout
+        self.options = {"temperature": temperature, "num_ctx": num_ctx,}
+
+        logger.info(f"Ollama client initialized: {base_url} | model: {model}")
+
+        if not self._health_check():
+            logger.warning(f"Could not connect to Ollama at {base_url}")
+
+    def _health_check(self) -> bool:
+        try:
+            response = requests.get(f"{self.base_url}/", timeout=10)
+            return response.status_code == 200
+        except requests.RequestException as e:
+            logger.error(f"Health check failed: {e}")
+            return False
+
+    def generate(self, prompt: str, stream: bool = False) -> str:
+        url = f"{self.base_url}/api/generate"
+
+        payload = {"model": self.model, "prompt": prompt, "stream": stream, "options": self.options}
+
+        try:
+            logger.debug(f"Sending request to Ollama: {len(prompt)} chars")
+
+            response = requests.post(url, json=payload, timeout=self.timeout, stream=stream)
+            response.raise_for_status()
+
+            if stream:
+                full_response = []
+                for line in response.iter_lines():
+                    if line:
+                        import json
+                        chunk = json.loads(line)
+                        if "response" in chunk:
+                            full_response.append(chunk["response"])
+                        if chunk.get("done"):
+                            break
+                return "".join(full_response).strip()
+            else:
+                result = response.json()
+                return result.get("response", "").strip()
+
+        except requests.Timeout:
+            logger.error(f"Request timed out after {self.timeout}s")
+            return "Error: Request timeout. The model may be loading or the prompt is too long."
+        except requests.ConnectionError:
+            logger.error(f"Could not connect to Ollama at {self.base_url}")
+            return f"Error: Cannot connect to Ollama server at {self.base_url}. Is it running?"
+        except requests.HTTPError as e:
+            logger.error(f"HTTP error: {e} - Response: {response.text}")
+            return f"Error: HTTP {response.status_code} - {response.text}"
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            return f"Error: {type(e).__name__} - {str(e)}"
+
 if __name__ == '__main__':
-    local_transformers_llm = LocalTransformersLLM()
+    ollamallmclient = OllamaLLMClient(base_url=settings.ollama_base_url, model=settings.ollama_default_model, timeout=settings.ollama_default_timeout, temperature=settings.ollama_default_temperature, num_ctx=settings.ollama_default_num_ctx)
     promt_generator = PromptGenerator()
     promt = promt_generator.generate("What is docker?")
-    logger.info(local_transformers_llm.generate(promt))
+    logger.info(ollamallmclient.generate(promt))
