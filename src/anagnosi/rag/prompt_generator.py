@@ -6,15 +6,19 @@ from anagnosi.rag.rag import get_rag_from_md_notes
 class PromptGenerator:
     def generate(self, query: str):
         retrieved = get_rag_from_md_notes(query)
+
         context_text = "\n\n".join([
-            f"### Source: {chunk['source']} (chunk #{chunk['chunk_index']})\n{chunk['content']}"
+            f"### Source File: {chunk['source']}.md (Chunk #{chunk['chunk_index']})\n{chunk['content']}"
             for chunk in retrieved
         ])
 
         system_prompt = (
             "You are a helpful assistant that answers questions based on the provided context. "
             "If the context doesn't contain relevant information, say so honestly. "
-            "Cite your sources when possible."
+            "ALWAYS cite your sources using the exact filename from the context, like: "
+            "(Source: filename.md, Chunk #X). "
+            "If multiple chunks from the same file are used, list the chunk numbers. "
+            "If information comes from multiple files, cite each one separately."
         )
 
         prompt = f"""<|system|>\n{system_prompt}\n
