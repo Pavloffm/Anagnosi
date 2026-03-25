@@ -1,11 +1,11 @@
 import re
 from pathlib import Path
 from typing import Optional, List
-from xml.dom.minidom import Document
 
 import chromadb
 import torch
 from dotenv import load_dotenv
+from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from loguru import logger
 from transformers import AutoTokenizer, AutoModel
