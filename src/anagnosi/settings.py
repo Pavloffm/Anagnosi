@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     app_root_path: Path = Path.cwd()
     hf_token: str = ""
 
+
     project_dir: str = "anagnosi_vault"
     home_dir: str = "0000_home"
     inbox_dir: str = "0001_inbox"
