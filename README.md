@@ -22,6 +22,10 @@ cp .env.example .env
 ```
 Edit .env with your preferences
 
+### 4. Run Local LLM
+```commandline
+anagnosi ask-local "What is docker?" --model "Qwen/Qwen2.5-1.5B-Instruct" --device "cpu"
+```
 ## Run tests
 ```commandline
 poetry run pytest
