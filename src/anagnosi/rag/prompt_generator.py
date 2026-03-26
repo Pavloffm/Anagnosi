@@ -25,5 +25,5 @@ class PromptGenerator:
         return prompt
 
 if __name__ == '__main__':
-    promt_generator = PromptGenerator()
-    logger.info(promt_generator.generate("Am I know something about Docker?"))
+    prompt_generator = PromptGenerator()
+    logger.info(prompt_generator.generate("Am I know something about Docker?"))
