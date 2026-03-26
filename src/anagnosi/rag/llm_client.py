@@ -5,11 +5,6 @@ import torch
 from loguru import logger
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-from anagnosi.rag.metadata_store import init_metadata_db
-from anagnosi.rag.prompt_generator import PromptGenerator
-from anagnosi.rag.rag import get_collection, get_embedder, sync_documents_to_collection
-from anagnosi.settings import settings
-
 
 class LocalTransformersLLM:
     def __init__(self, model_name: str = "HuggingFaceTB/SmolLM2-135M-Instruct", device: str = "cuda" if torch.cuda.is_available() else "cpu"):
@@ -124,14 +119,3 @@ class OllamaLLMClient:
         except Exception as e:
             logger.error(f"Streaming error: {e}")
             yield f"\n[Error: {type(e).__name__}]\n"
-
-
-if __name__ == '__main__':
-    init_metadata_db()
-    sync_documents_to_collection(get_collection(), get_embedder(), force_reindex=True)
-
-    ollamallmclient = OllamaLLMClient(base_url=settings.ollama_base_url, model=settings.ollama_default_model, timeout=settings.ollama_default_timeout, temperature=settings.ollama_default_temperature, num_ctx=settings.ollama_default_num_ctx)
-    promt_generator = PromptGenerator()
-    prompt = promt_generator.generate("What is docker?")
-    logger.info(prompt)
-    logger.info(ollamallmclient.generate(prompt))

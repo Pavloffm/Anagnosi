@@ -1,4 +1,3 @@
-from loguru import logger
 
 
 class PromptGenerator:
@@ -23,7 +22,3 @@ class PromptGenerator:
         <|assistant|>"""
 
         return prompt
-
-if __name__ == '__main__':
-    prompt_generator = PromptGenerator()
-    logger.info(prompt_generator.generate("Am I know something about Docker?"))
