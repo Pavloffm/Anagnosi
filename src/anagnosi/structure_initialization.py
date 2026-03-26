@@ -2,7 +2,7 @@ import shutil
 
 from loguru import logger
 
-from src.anagnosi.config import paths
+from anagnosi.config import paths
 
 
 class StructureInitializer:

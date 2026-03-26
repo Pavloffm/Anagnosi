@@ -13,7 +13,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 from anagnosi.rag.metadata_store import init_metadata_db, delete_file_metadata, get_orphaned_sources, \
     upsert_file_metadata, get_file_metadata, compute_file_hash, get_files_needing_sync
-from src.anagnosi.config import paths
+from anagnosi.config import paths
 
 load_dotenv()
 
