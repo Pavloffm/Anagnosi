@@ -30,6 +30,11 @@ class Settings(BaseSettings):
 
     home_file: str = "0000_home.md"
 
+    embedding_model_name: str = Field(default="BAAI/bge-small-en-v1.5", validation_alias="EMBEDDING_MODEL_NAME")
+    rag_embedding_batch_size: int = Field(default=32, validation_alias="RAG_EMBEDDING_BATCH_SIZE")
+
+    rag_chunk_size: int = Field(default=256, validation_alias="RAG_CHUNK_SIZE")
+    rag_chunk_overlap: int = Field(default=32, validation_alias="RAG_CHUNK_OVERLAP")
 
     ollama_base_url: str = Field(default="http://localhost:11434", validation_alias="OLLAMA_BASE_URL")
     ollama_default_model: str = Field(default="qwen3.5:4b", validation_alias="OLLAMA_DEFAULT_MODEL")

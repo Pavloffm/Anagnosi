@@ -59,11 +59,12 @@ def cmd_init():
 def cmd_sync(force: bool = typer.Option(False, "--force", "-f", help="Force re-index all files"),):
     with Status("Syncing documents to vector database...", spinner="dots"):
         try:
-            collection = get_collection()
-            embedder = get_embedder()
-            sync_documents_to_collection(collection, embedder, force_reindex=force)
-
-            console.print(Panel("[green]Sync Complete![/]\n", style="green", title="Sync Results"))
+            with Status("Syncing documents to vector database...", spinner="dots", console=console):
+                collection = get_collection()
+                embedder = get_embedder()
+                sync_documents_to_collection(collection, embedder, force_reindex=force)
+            console.print()
+            console.print(Panel("[green]Sync Complete![/]\nDocuments indexed and ready for querying.", style="green", title="Sync Results", border_style="green"))
         except Exception as e:
             console.print(Panel(f"Sync failed: {e}", style="red"))
             raise typer.Exit(1) from None

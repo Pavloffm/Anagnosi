@@ -1,4 +1,5 @@
 import hashlib
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -22,6 +23,7 @@ from anagnosi.rag.metadata_store import (
     init_metadata_db,
     upsert_file_metadata,
 )
+from anagnosi.settings import settings
 
 
 def discover_notes() -> list[Path]:
@@ -85,11 +87,9 @@ def get_collection():
 
 @lru_cache(maxsize=1)
 def get_embedder():
-    return HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={"device": "cuda" if torch.cuda.is_available() else "cpu"},
-        encode_kwargs={"normalize_embeddings": True, "batch_size": 32}
-    )
+    if settings.hf_token:
+        os.environ["HF_TOKEN"] = settings.hf_token
+    return HuggingFaceEmbeddings(model_name=settings.embedding_model_name, model_kwargs={"device": "cuda" if torch.cuda.is_available() else "cpu"}, encode_kwargs={"normalize_embeddings": True, "batch_size": settings.rag_embedding_batch_size})
 
 
 def _generate_chunk_id(source: str, content: str, chunk_index: int) -> str:
@@ -135,8 +135,8 @@ def delete_source_chunks(collection, source: str) -> int:
 
 
 def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, force_reindex: bool = False):
-    CHUNK_SIZE = 256
-    CHUNK_OVERLAP = 32
+    CHUNK_SIZE = settings.rag_chunk_size
+    CHUNK_OVERLAP = settings.rag_chunk_overlap
 
     init_metadata_db()
 
