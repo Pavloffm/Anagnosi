@@ -1,6 +1,6 @@
-import pytest
-from anagnosi.rag.rag import clean_text, split_for_rag
 from langchain_core.documents import Document
+
+from anagnosi.rag.rag import clean_text, split_for_rag
 
 
 class TestCleanText:
@@ -9,7 +9,7 @@ class TestCleanText:
 
     def test_strips_whitespace(self):
         assert clean_text("  content  \n\n") == "content"
-        assert clean_text("  \t  \n\n  \t  ") == None
+        assert clean_text("  \t  \n\n  \t  ") is None
 
     def test_returns_none_for_empty(self):
         assert clean_text("") is None

@@ -1,4 +1,5 @@
 from loguru import logger
+
 from anagnosi.structure_initialization import StructureInitializer
 
 
