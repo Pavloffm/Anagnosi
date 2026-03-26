@@ -1,14 +1,12 @@
 import hashlib
 import sqlite3
 from contextlib import contextmanager
-from pathlib import Path
-from typing import Optional, Dict, List, Set
 from datetime import datetime
+from pathlib import Path
 
 from loguru import logger
 
 from anagnosi.config import paths
-
 
 DB_PATH = paths.project_path / ".vector_db" / "index_metadata.db"
 
@@ -44,7 +42,7 @@ def init_metadata_db():
     logger.debug("Metadata DB initialized")
 
 
-def compute_file_hash(file_path: Path) -> Optional[str]:
+def compute_file_hash(file_path: Path) -> str | None:
     try:
         content = file_path.read_bytes()
         return hashlib.sha256(content).hexdigest()
@@ -53,7 +51,7 @@ def compute_file_hash(file_path: Path) -> Optional[str]:
         return None
 
 
-def get_file_metadata(source: str) -> Optional[Dict]:
+def get_file_metadata(source: str) -> dict | None:
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT * FROM file_index WHERE source = ?", (source,))
         row = cursor.fetchone()
@@ -70,7 +68,7 @@ def upsert_file_metadata(source: str, file_path: Path, file_hash: str, chunk_cou
         is_update = existing and existing["file_hash"] != file_hash
 
         conn.execute("""
-            INSERT OR REPLACE INTO file_index 
+            INSERT OR REPLACE INTO file_index
             (source, file_path, file_hash, chunk_count, last_modified, last_synced, created_at)
             VALUES (?, ?, ?, ?, ?, ?, COALESCE( (SELECT created_at FROM file_index WHERE source = ?), ? ))
         """, (source, str(file_path), file_hash, chunk_count, mtime, now, source, now))
@@ -96,12 +94,12 @@ def delete_file_metadata(source: str) -> bool:
         return deleted
 
 
-def get_all_tracked_sources() -> Set[str]:
+def get_all_tracked_sources() -> set[str]:
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT source FROM file_index")
         return {row["source"] for row in cursor.fetchall()}
 
-def get_files_needing_sync(current_files: Dict[str, Path], force: bool = False) -> List[str]:
+def get_files_needing_sync(current_files: dict[str, Path], force: bool = False) -> list[str]:
     to_sync = []
 
     for source, file_path in current_files.items():
@@ -126,14 +124,14 @@ def get_files_needing_sync(current_files: Dict[str, Path], force: bool = False) 
     return to_sync
 
 
-def has_file_changed(meta: Dict, file_path: Path, current_hash: str) -> bool:
+def has_file_changed(meta: dict, file_path: Path, current_hash: str) -> bool:
     if meta["last_modified"] != file_path.stat().st_mtime: return True
     if meta["file_path"] != str(file_path): return True
     if meta["file_hash"] != current_hash: return True
 
     return False
 
-def get_orphaned_sources(current_sources: Set[str]) -> List[str]:
+def get_orphaned_sources(current_sources: set[str]) -> list[str]:
     tracked = get_all_tracked_sources()
     orphans = tracked - current_sources
     if orphans:

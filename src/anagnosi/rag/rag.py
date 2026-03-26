@@ -1,19 +1,28 @@
 import hashlib
 import re
 from pathlib import Path
-from typing import Optional, List, Dict
 
 import chromadb
 import torch
 from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
-from loguru import logger
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_text_splitters import (
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
+from loguru import logger
 
-from anagnosi.rag.metadata_store import init_metadata_db, delete_file_metadata, get_orphaned_sources, \
-    upsert_file_metadata, get_file_metadata, compute_file_hash, get_files_needing_sync
 from anagnosi.config import paths
+from anagnosi.rag.metadata_store import (
+    compute_file_hash,
+    delete_file_metadata,
+    get_file_metadata,
+    get_files_needing_sync,
+    get_orphaned_sources,
+    init_metadata_db,
+    upsert_file_metadata,
+)
 
 load_dotenv()
 
@@ -21,7 +30,7 @@ def discover_notes() -> list[Path]:
     md_files = [f for f in paths.project_path.glob("*.md") if f.is_file()]
     return md_files
 
-def reading_text(file_path: Path) -> Optional[str]:
+def reading_text(file_path: Path) -> str | None:
     try:
         raw_text = file_path.read_text(encoding="utf-8")
         return clean_text(raw_text)
@@ -29,13 +38,13 @@ def reading_text(file_path: Path) -> Optional[str]:
         logger.error(f" Error reading {file_path}: {e}")
         return None
 
-def clean_text(text: str) -> Optional[str]:
+def clean_text(text: str) -> str | None:
     text = re.sub(r'\n{3,}', '\n\n', text)
     text = text.strip()
 
     return text if text else None
 
-def split_for_rag(text: str, chunk_size: int, chunk_overlap: int) -> List[Document]:
+def split_for_rag(text: str, chunk_size: int, chunk_overlap: int) -> list[Document]:
     if not text:
         return []
 
@@ -87,7 +96,7 @@ def _generate_chunk_id(source: str, content: str, chunk_index: int) -> str:
     content_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:16]
     return f"{source}_{content_hash}"
 
-def ingest_documents(chunks: List[Document], collection, embedder: HuggingFaceEmbeddings, source: str) -> tuple[int, List[str]]:
+def ingest_documents(chunks: list[Document], collection, embedder: HuggingFaceEmbeddings, source: str) -> tuple[int, list[str]]:
     if not chunks:
         return 0, []
 
@@ -124,13 +133,13 @@ def delete_source_chunks(collection, source: str) -> int:
         return 0
 
 
-def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, force_reindex: bool = False) -> Dict[str, int]:
+def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, force_reindex: bool = False) -> dict[str, int]:
     CHUNK_SIZE = 256
     CHUNK_OVERLAP = 32
 
     init_metadata_db()
 
-    current_files: Dict[str, Path] = {f.stem: f for f in discover_notes()}
+    current_files: dict[str, Path] = {f.stem: f for f in discover_notes()}
     current_sources = set(current_files.keys())
 
     stats = {"added": 0, "updated": 0, "deleted": 0, "skipped": 0}
@@ -178,7 +187,7 @@ def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, fo
     return stats
 
 
-def retrieve_relevant_chunks(query: str, collection, embedder: HuggingFaceEmbeddings, top_k: int = 5) -> List[dict]:
+def retrieve_relevant_chunks(query: str, collection, embedder: HuggingFaceEmbeddings, top_k: int = 5) -> list[dict]:
     try:
         query_embedding = embedder.embed_query(query)
         results = collection.query(query_embeddings=[query_embedding], n_results=top_k, include=["documents", "metadatas", "distances"])

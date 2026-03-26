@@ -1,11 +1,11 @@
 import requests
 import torch
 from loguru import logger
-from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 from anagnosi.rag.metadata_store import init_metadata_db
 from anagnosi.rag.prompt_generator import PromptGenerator
-from anagnosi.rag.rag import sync_documents_to_collection, get_collection, get_embedder
+from anagnosi.rag.rag import get_collection, get_embedder, sync_documents_to_collection
 from anagnosi.settings import settings
 
 
@@ -104,6 +104,6 @@ if __name__ == '__main__':
 
     ollamallmclient = OllamaLLMClient(base_url=settings.ollama_base_url, model=settings.ollama_default_model, timeout=settings.ollama_default_timeout, temperature=settings.ollama_default_temperature, num_ctx=settings.ollama_default_num_ctx)
     promt_generator = PromptGenerator()
-    promt = promt_generator.generate("What is docker?")
-    logger.info(promt)
-    logger.info(ollamallmclient.generate(promt))
+    prompt = promt_generator.generate("What is docker?")
+    logger.info(prompt)
+    logger.info(ollamallmclient.generate(prompt))
