@@ -190,6 +190,3 @@ def get_rag_from_md_notes(query: str, top_k: int):
     collection = get_collection()
     embedder = get_embedder()
     return retrieve_relevant_chunks(query, collection, embedder, top_k)
-
-if __name__ == '__main__':
-    logger.info(get_rag_from_md_notes("What is cat?", 5))
