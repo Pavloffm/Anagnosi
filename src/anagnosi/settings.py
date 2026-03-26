@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     app_root_path: Path = Field(default=Path.cwd(), validation_alias="APP_ROOT_PATH")
     hf_token: str = Field(default="", validation_alias="HF_TOKEN")
-
+    debug_mode: bool = Field(default=False, validation_alias="DEBUG_MODE")
 
     project_dir: str = "anagnosi_vault"
     home_dir: str = "0000_home"

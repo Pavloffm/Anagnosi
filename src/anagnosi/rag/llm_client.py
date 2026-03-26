@@ -11,7 +11,7 @@ from anagnosi.settings import settings
 
 class LocalTransformersLLM:
     def __init__(self, model_name: str = "HuggingFaceTB/SmolLM2-135M-Instruct", device: str = "cuda" if torch.cuda.is_available() else "cpu"):
-        logger.info(f"Loading model: {model_name} on {device}")
+        logger.debug(f"Loading model: {model_name} on {device}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.float16 if device == "cuda" else torch.float32, device_map="auto" if device == "cuda" else None)
@@ -46,7 +46,7 @@ class OllamaLLMClient:
         self.timeout = timeout
         self.options = {"temperature": temperature, "num_ctx": num_ctx,}
 
-        logger.info(f"Ollama client initialized: {base_url} | model: {model}")
+        logger.debug(f"Ollama client initialized: {base_url} | model: {model}")
 
         if not self._health_check():
             logger.warning(f"Could not connect to Ollama at {base_url}")
@@ -97,6 +97,35 @@ class OllamaLLMClient:
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
             return f"Error: {type(e).__name__} - {str(e)}"
+
+    def generate_stream(self, prompt: str):
+        url = f"{self.base_url}/api/generate"
+        payload = {"model": self.model, "prompt": prompt, "stream": True, "options": self.options}
+
+        try:
+            logger.debug(f"Streaming request to Ollama: {len(prompt)} chars")
+            response = requests.post(url, json=payload, timeout=self.timeout, stream=True)
+            response.raise_for_status()
+
+            for line in response.iter_lines():
+                if line:
+                    import json
+                    chunk = json.loads(line)
+                    if "response" in chunk:
+                        yield chunk["response"]
+                    if chunk.get("done"):
+                        break
+
+        except requests.Timeout:
+            logger.error(f"Stream request timed out after {self.timeout}s")
+            yield "\n[Error: Request timeout]\n"
+        except requests.ConnectionError:
+            logger.error(f"Could not connect to Ollama at {self.base_url}")
+            yield f"\n[Error: Cannot connect to {self.base_url}]\n"
+        except Exception as e:
+            logger.error(f"Streaming error: {e}")
+            yield f"\n[Error: {type(e).__name__}]\n"
+
 
 if __name__ == '__main__':
     init_metadata_db()
