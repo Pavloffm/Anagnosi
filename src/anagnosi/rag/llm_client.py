@@ -7,7 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
 
 class LocalTransformersLLM:
-    def __init__(self, model_name: str = "HuggingFaceTB/SmolLM2-135M-Instruct", device: str = "cuda" if torch.cuda.is_available() else "cpu"):
+    def __init__(self, model_name: str = "Qwen/Qwen2.5-1.5B-Instruct", device: str = "cuda" if torch.cuda.is_available() else "cpu"):
         logger.debug(f"Loading model: {model_name} on {device}")
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)

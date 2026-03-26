@@ -1,0 +1,22 @@
+flowchart TD
+    A[anagnosi sync] --> B[discover_notes]
+    B --> C{Find .md files<br/>in vault root}
+    C --> D[metadata_store]
+    D --> E{Check SQLite<br/>index_metadata.db}
+    E --> F[get_files_needing_sync]
+    F --> G{File changed?<br/>hash/mtime/path}
+    G -->|Yes| H[reading_text]
+    G -->|No| I[Skip - Already indexed]
+    H --> J[split_for_rag]
+    J --> K[MarkdownHeaderTextSplitter]
+    K --> L[RecursiveCharacterTextSplitter]
+    L --> M[Chunks with metadata]
+    M --> N[get_embedder]
+    N --> O[HuggingFaceEmbeddings<br/>bge-small-en-v1.5]
+    O --> P[ingest_documents]
+    P --> Q[ChromaDB<br/>.vector_db/]
+    Q --> R[upsert_file_metadata]
+    R --> S[SQLite updated]
+    G -->|Deleted| T[get_orphaned_sources]
+    T --> U[delete_source_chunks]
+    U --> V[Clean ChromaDB]
