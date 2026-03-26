@@ -17,7 +17,6 @@ class LocalTransformersLLM:
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=torch.float16 if device == "cuda" else torch.float32, device_map="auto" if device == "cuda" else None)
-
         self.pipe = pipeline(
             "text-generation",
             model=self.model,
