@@ -1,3 +1,5 @@
+import json
+
 import requests
 import torch
 from loguru import logger
@@ -74,7 +76,6 @@ class OllamaLLMClient:
                 full_response = []
                 for line in response.iter_lines():
                     if line:
-                        import json
                         chunk = json.loads(line)
                         if "response" in chunk:
                             full_response.append(chunk["response"])
@@ -109,7 +110,6 @@ class OllamaLLMClient:
 
             for line in response.iter_lines():
                 if line:
-                    import json
                     chunk = json.loads(line)
                     if "response" in chunk:
                         yield chunk["response"]
