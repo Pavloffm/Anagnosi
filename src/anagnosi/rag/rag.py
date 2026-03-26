@@ -1,6 +1,7 @@
+import hashlib
 import re
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import chromadb
 import torch
@@ -10,6 +11,8 @@ from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharac
 from loguru import logger
 from langchain_huggingface import HuggingFaceEmbeddings
 
+from anagnosi.rag.metadata_store import init_metadata_db, delete_file_metadata, get_orphaned_sources, \
+    upsert_file_metadata, get_file_metadata, compute_file_hash, get_files_needing_sync
 from src.anagnosi.config import paths
 
 load_dotenv()
@@ -78,66 +81,123 @@ def get_embedder():
         encode_kwargs={"normalize_embeddings": True, "batch_size": 32}
     )
 
-def ingest_documents(chunks: List[str], collection, embedder: HuggingFaceEmbeddings, source: str = ""):
-    if not chunks:
-        return 0
 
-    ids = [f"{source}_{i}" for i in range(len(chunks))]
-    metadatas = [{"source": source, "chunk_index": i} for i in range(len(chunks))]
+def _generate_chunk_id(source: str, content: str, chunk_index: int) -> str:
+    hash_input = f"{source}:{chunk_index}:{content}"
+    content_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:16]
+    return f"{source}_{content_hash}"
+
+def ingest_documents(chunks: List[Document], collection, embedder: HuggingFaceEmbeddings, source: str) -> tuple[int, List[str]]:
+    if not chunks:
+        return 0, []
+
+    ids = []
+    contents = []
+    metadatas = []
+
+    for i, doc in enumerate(chunks):
+        chunk_id = _generate_chunk_id(source, doc.page_content, i)
+        ids.append(chunk_id)
+        contents.append(doc.page_content)
+        metadatas.append({"source": source, "chunk_index": i, "filename": f"{source}.md"})
 
     try:
-        embeddings = embedder.embed_documents(chunks)
-
-        collection.upsert(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
-        logger.info(f"Ingested {len(embeddings)} chunks from {source}")
-        return len(embeddings)
+        embeddings = embedder.embed_documents(contents)
+        collection.upsert(ids=ids, embeddings=embeddings, documents=contents, metadatas=metadatas)
+        logger.info(f"Upserted {len(embeddings)} chunks from {source}")
+        return len(embeddings), ids
     except Exception as e:
-        logger.error(f"Failed to embed documents: {e}")
+        logger.error(f"Failed to embed/upsert: {e}")
+        return 0, []
+
+
+def delete_source_chunks(collection, source: str) -> int:
+    try:
+        existing = collection.get(where={"source": source})
+        if existing["ids"]:
+            collection.delete(ids=existing["ids"])
+            logger.debug(f"Deleted {len(existing['ids'])} chunks for {source}")
+            return len(existing["ids"])
         return 0
+    except Exception as e:
+        logger.error(f"Error deleting chunks for {source}: {e}")
+        return 0
+
+
+def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, force_reindex: bool = False) -> Dict[str, int]:
+    CHUNK_SIZE = 256
+    CHUNK_OVERLAP = 32
+
+    init_metadata_db()
+
+    current_files: Dict[str, Path] = {f.stem: f for f in discover_notes()}
+    current_sources = set(current_files.keys())
+
+    stats = {"added": 0, "updated": 0, "deleted": 0, "skipped": 0}
+
+    sources_to_sync = get_files_needing_sync(current_files, force_reindex)
+
+    for source in sources_to_sync:
+        file_path = current_files[source]
+        file_hash = compute_file_hash(file_path)
+        if not file_hash:
+            continue
+
+        text = reading_text(file_path)
+        if not text:
+            continue
+
+        chunks_docs = split_for_rag(text, CHUNK_SIZE, CHUNK_OVERLAP)
+        if not chunks_docs:
+            continue
+
+        old_count = delete_source_chunks(collection, source)
+        if old_count > 0:
+            stats["deleted"] += old_count
+
+        count, _ = ingest_documents(chunks_docs, collection, embedder, source)
+        if count > 0:
+            upsert_file_metadata(source, file_path, file_hash, count)
+            if get_file_metadata(source)["created_at"] == get_file_metadata(source)["last_synced"]:
+                stats["added"] += count
+            else:
+                stats["updated"] += count
+        else:
+            stats["skipped"] += 1
+
+    stats["skipped"] += len(current_files) - len(sources_to_sync)
+
+    for source in get_orphaned_sources(current_sources):
+        deleted = delete_source_chunks(collection, source)
+        delete_file_metadata(source)
+        stats["deleted"] += deleted
+        logger.info(f"Cleaned up orphaned file: {source}")
+
+    logger.info(f"Sync complete: +{stats['added']} updated:{stats['updated']} deleted:{stats['deleted']} "\
+                  "skipped:{stats['skipped']}")
+    return stats
 
 
 def retrieve_relevant_chunks(query: str, collection, embedder: HuggingFaceEmbeddings, top_k: int = 5) -> List[dict]:
     try:
         query_embedding = embedder.embed_query(query)
-
-        results = collection.query(
-            query_embeddings=[query_embedding],
-            n_results=top_k,
-            include=["documents", "metadatas", "distances"]
-        )
+        results = collection.query(query_embeddings=[query_embedding], n_results=top_k, include=["documents", "metadatas", "distances"])
 
         formatted = []
         if results["documents"] and results["documents"][0]:
             for i in range(len(results["documents"][0])):
-                formatted.append({
-                    "content": results["documents"][0][i],
-                    "source": results["metadatas"][0][i].get("source", "unknown"),
-                    "chunk_index": results["metadatas"][0][i].get("chunk_index", -1),
-                    "distance": results["distances"][0][i]
-                })
-            logger.info(f"Retrieved {len(formatted)} chunks for query: '{query[:50]}...'")
-
+                formatted.append({"content": results["documents"][0][i], "source": results["metadatas"][0][i].get("source", "unknown"), "chunk_index": results["metadatas"][0][i].get("chunk_index", -1), "distance": results["distances"][0][i]})
         return formatted
-
     except Exception as e:
         logger.error(f"Error retrieving chunks: {e}")
         return []
 
-def get_rag_from_md_notes(query: str):
-    CHUNK_SIZE = 256
-    CHUNK_OVERLAP = 32
 
-    files = discover_notes()
+def get_rag_from_md_notes(query: str):
+    init_metadata_db()
+
     collection = get_collection()
     embedder = get_embedder()
-
-    for file_path in files:
-        text = reading_text(file_path)
-        chunks_docs = split_for_rag(text, CHUNK_SIZE, CHUNK_OVERLAP)
-        chunks = [doc.page_content for doc in chunks_docs]
-
-        count = ingest_documents(chunks, collection, embedder, source=file_path.stem)
-
     return retrieve_relevant_chunks(query, collection, embedder, top_k=5)
 
 if __name__ == '__main__':
