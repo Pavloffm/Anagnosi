@@ -7,7 +7,7 @@ from datetime import datetime
 
 from loguru import logger
 
-from src.anagnosi.config import paths
+from anagnosi.config import paths
 
 
 DB_PATH = paths.project_path / ".vector_db" / "index_metadata.db"

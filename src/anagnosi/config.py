@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.anagnosi.settings import settings
+from anagnosi.settings import settings
 
 
 class PathConfig:

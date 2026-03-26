@@ -1,5 +1,5 @@
 from loguru import logger
-from src.anagnosi.structure_initialization import StructureInitializer
+from anagnosi.structure_initialization import StructureInitializer
 
 
 def main():
