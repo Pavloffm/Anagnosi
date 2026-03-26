@@ -1,5 +1,6 @@
 import hashlib
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import chromadb
@@ -74,12 +75,15 @@ def _create_recursive_splitter(chunk_size: int, chunk_overlap: int) -> Recursive
 
 COLLECTION_NAME = "anagnosi_notes"
 DB_PATH = paths.project_path / ".vector_db"
+
+@lru_cache(maxsize=1)
 def get_collection():
     DB_PATH.mkdir(exist_ok=True)
     client = chromadb.PersistentClient(path=str(DB_PATH))
     collection = client.get_or_create_collection(name=COLLECTION_NAME)
     return collection
 
+@lru_cache(maxsize=1)
 def get_embedder():
     return HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2",
