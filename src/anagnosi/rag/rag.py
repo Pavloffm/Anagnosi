@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from loguru import logger
-from transformers import AutoTokenizer, AutoModel
+from langchain_huggingface import HuggingFaceEmbeddings
 
 from src.anagnosi.config import paths
 
@@ -63,29 +63,6 @@ def split_for_rag(text: str, chunk_size: int, chunk_overlap: int) -> List[Docume
 def _create_recursive_splitter(chunk_size: int, chunk_overlap: int) -> RecursiveCharacterTextSplitter:
     return RecursiveCharacterTextSplitter(chunk_size=chunk_size,chunk_overlap=chunk_overlap,length_function=len,separators=["\n\n", "\n", " ", ""])
 
-
-class SimpleEmbedder:
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
-        logger.info(f"Loading embedding model: {model_name}")
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
-        self.model.eval()
-
-    def _mean_pooling(self, model_output, attention_mask):
-        token_embeddings = model_output.last_hidden_state
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-        sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, dim=1)
-        sum_mask = torch.clamp(input_mask_expanded.sum(dim=1), min=1e-9)
-        return sum_embeddings / sum_mask
-
-    def encode(self, text: str) -> list[float]:
-        encoded = self.tokenizer(text,padding=True,truncation=True,max_length=512,return_tensors="pt")
-        with torch.no_grad():
-            output = self.model(**encoded)
-        embeddings = self._mean_pooling(output, encoded["attention_mask"])
-        embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
-        return embeddings.cpu().tolist()[0]
-
 COLLECTION_NAME = "anagnosi_notes"
 DB_PATH = paths.project_path / ".vector_db"
 def get_collection():
@@ -94,37 +71,40 @@ def get_collection():
     collection = client.get_or_create_collection(name=COLLECTION_NAME)
     return collection
 
+def get_embedder():
+    return HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={"device": "cuda" if torch.cuda.is_available() else "cpu"},
+        encode_kwargs={"normalize_embeddings": True, "batch_size": 32}
+    )
 
-def ingest_documents(chunks: List[str], collection, embedder: SimpleEmbedder, source: str = ""):
+def ingest_documents(chunks: List[str], collection, embedder: HuggingFaceEmbeddings, source: str = ""):
     if not chunks:
         return 0
 
-    embeddings = []
-    ids = []
-    metadatas = []
+    ids = [f"{source}_{i}" for i in range(len(chunks))]
+    metadatas = [{"source": source, "chunk_index": i} for i in range(len(chunks))]
 
-    for i, chunk in enumerate(chunks):
-        try:
-            embedding = embedder.encode(chunk)
-            embeddings.append(embedding)
-            ids.append(f"{source}_{i}")
-            metadatas.append({"source": source, "chunk_index": i})
-        except Exception as e:
-            logger.warning(f"Failed to embed chunk {i}: {e}")
+    try:
+        embeddings = embedder.embed_documents(chunks)
 
-    if embeddings:
-        collection.add(ids=ids,embeddings=embeddings,documents=chunks,metadatas=metadatas)
+        collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
         logger.info(f"Ingested {len(embeddings)} chunks from {source}")
         return len(embeddings)
+    except Exception as e:
+        logger.error(f"Failed to embed documents: {e}")
+        return 0
 
-    return 0
 
-
-def retrieve_relevant_chunks(query: str,collection,embedder: SimpleEmbedder,top_k: int = 5) -> List[dict]:
+def retrieve_relevant_chunks(query: str, collection, embedder: HuggingFaceEmbeddings, top_k: int = 5) -> List[dict]:
     try:
-        query_embedding = embedder.encode(query)
+        query_embedding = embedder.embed_query(query)
 
-        results = collection.query(query_embeddings=[query_embedding],n_results=top_k,include=["documents", "metadatas", "distances"])
+        results = collection.query(
+            query_embeddings=[query_embedding],
+            n_results=top_k,
+            include=["documents", "metadatas", "distances"]
+        )
 
         formatted = []
         if results["documents"] and results["documents"][0]:
@@ -149,7 +129,7 @@ def get_rag_from_md_notes(query: str):
 
     files = discover_notes()
     collection = get_collection()
-    embedder = SimpleEmbedder(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embedder = get_embedder()
 
     for file_path in files:
         text = reading_text(file_path)
@@ -157,7 +137,6 @@ def get_rag_from_md_notes(query: str):
         chunks = [doc.page_content for doc in chunks_docs]
 
         count = ingest_documents(chunks, collection, embedder, source=file_path.stem)
-        logger.info(split_for_rag)
 
     return retrieve_relevant_chunks(query, collection, embedder, top_k=5)
 
