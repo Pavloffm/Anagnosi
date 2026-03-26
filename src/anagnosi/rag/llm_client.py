@@ -27,7 +27,7 @@ class LocalTransformersLLM:
             do_sample=True,
             pad_token_id=self.tokenizer.eos_token_id
         )
-        logger.info("Model loaded successfully")
+        logger.debug("Model loaded successfully")
 
     def generate(self, prompt: str) -> str:
         try:
