@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant User
+    participant CLI
+    participant RAG
+    participant ChromaDB
+    participant LLM
+
+    User->>CLI: anagnosi ask "question"
+    CLI->>RAG: get_rag_from_md_notes
+    RAG->>ChromaDB: query(embedding)
+    ChromaDB-->>RAG: top_k chunks
+    RAG->>CLI: retrieved_chunks
+    CLI->>LLM: generate(prompt + context)
+    LLM-->>CLI: response
+    CLI-->>User: Answer with citations

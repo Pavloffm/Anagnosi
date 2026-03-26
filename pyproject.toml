@@ -2,9 +2,7 @@
 name = "anagnosi"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Mykhailo Pavlov",email = "amishapavloffl@gmail.com"}
-]
+authors = []
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 dependencies = [
