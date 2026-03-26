@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-from typing import Optional
 
 import typer
 from loguru import logger
@@ -14,7 +13,12 @@ from rich.status import Status
 from anagnosi.config import paths
 from anagnosi.rag.llm_client import OllamaLLMClient
 from anagnosi.rag.prompt_generator import PromptGenerator
-from anagnosi.rag.rag import get_rag_from_md_notes
+from anagnosi.rag.rag import (
+    get_collection,
+    get_embedder,
+    get_rag_from_md_notes,
+    sync_documents_to_collection,
+)
 from anagnosi.settings import settings
 from anagnosi.structure_initialization import StructureInitializer
 
@@ -51,6 +55,19 @@ def cmd_init():
         raise typer.Exit(1)
 
 
+@app.command("sync")
+def cmd_sync(force: bool = typer.Option(False, "--force", "-f", help="Force re-index all files"),):
+    with Status("Syncing documents to vector database...", spinner="dots"):
+        try:
+            collection = get_collection()
+            embedder = get_embedder()
+            sync_documents_to_collection(collection, embedder, force_reindex=force)
+
+            console.print(Panel("[green]Sync Complete![/]\n", style="green", title="Sync Results"))
+        except Exception as e:
+            console.print(Panel(f"Sync failed: {e}", style="red"))
+            raise typer.Exit(1) from None
+
 @app.command("ask")
 def cmd_ask(query: str = typer.Argument(..., help="Your question"), top_k: int = typer.Option(5, "--top-k", "-k", min=1, max=20, help="Number of chunks to retrieve"), stream: bool = typer.Option(True, "--stream/--no-stream", help="Stream response token-by-token"),):
     if not (paths.project_path / ".vector_db").exists():
@@ -70,8 +87,6 @@ def cmd_ask(query: str = typer.Argument(..., help="Your question"), top_k: int =
 
     prompt_gen = PromptGenerator()
     prompt = prompt_gen.generate(query, retrieved_chunks)
-
-    llm = OllamaLLMClient(base_url=settings.ollama_base_url, model=settings.ollama_default_model, timeout=settings.ollama_default_timeout, temperature=settings.ollama_default_temperature, num_ctx=settings.ollama_default_num_ctx,)
 
     console.print("\nAnswer:", style="bold blue")
     llm = OllamaLLMClient(base_url=settings.ollama_base_url, model=settings.ollama_default_model, timeout=settings.ollama_default_timeout, temperature=settings.ollama_default_temperature, num_ctx=settings.ollama_default_num_ctx, )

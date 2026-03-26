@@ -4,7 +4,6 @@ from pathlib import Path
 
 import chromadb
 import torch
-from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_text_splitters import (
@@ -17,14 +16,12 @@ from anagnosi.config import paths
 from anagnosi.rag.metadata_store import (
     compute_file_hash,
     delete_file_metadata,
-    get_file_metadata,
     get_files_needing_sync,
     get_orphaned_sources,
     init_metadata_db,
     upsert_file_metadata,
 )
 
-load_dotenv()
 
 def discover_notes() -> list[Path]:
     md_files = [f for f in paths.project_path.glob("*.md") if f.is_file()]
@@ -113,7 +110,7 @@ def ingest_documents(chunks: list[Document], collection, embedder: HuggingFaceEm
     try:
         embeddings = embedder.embed_documents(contents)
         collection.upsert(ids=ids, embeddings=embeddings, documents=contents, metadatas=metadatas)
-        logger.info(f"Upserted {len(embeddings)} chunks from {source}")
+        logger.debug(f"Upserted {len(embeddings)} chunks from {source}")
         return len(embeddings), ids
     except Exception as e:
         logger.error(f"Failed to embed/upsert: {e}")
@@ -133,7 +130,7 @@ def delete_source_chunks(collection, source: str) -> int:
         return 0
 
 
-def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, force_reindex: bool = False) -> dict[str, int]:
+def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, force_reindex: bool = False):
     CHUNK_SIZE = 256
     CHUNK_OVERLAP = 32
 
@@ -141,8 +138,6 @@ def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, fo
 
     current_files: dict[str, Path] = {f.stem: f for f in discover_notes()}
     current_sources = set(current_files.keys())
-
-    stats = {"added": 0, "updated": 0, "deleted": 0, "skipped": 0}
 
     sources_to_sync = get_files_needing_sync(current_files, force_reindex)
 
@@ -160,32 +155,15 @@ def sync_documents_to_collection(collection, embedder: HuggingFaceEmbeddings, fo
         if not chunks_docs:
             continue
 
-        old_count = delete_source_chunks(collection, source)
-        if old_count > 0:
-            stats["deleted"] += old_count
-
+        delete_source_chunks(collection, source)
         count, _ = ingest_documents(chunks_docs, collection, embedder, source)
         if count > 0:
             upsert_file_metadata(source, file_path, file_hash, count)
-            if get_file_metadata(source)["created_at"] == get_file_metadata(source)["last_synced"]:
-                stats["added"] += count
-            else:
-                stats["updated"] += count
-        else:
-            stats["skipped"] += 1
-
-    stats["skipped"] += len(current_files) - len(sources_to_sync)
 
     for source in get_orphaned_sources(current_sources):
-        deleted = delete_source_chunks(collection, source)
+        delete_source_chunks(collection, source)
         delete_file_metadata(source)
-        stats["deleted"] += deleted
-        logger.info(f"Cleaned up orphaned file: {source}")
-
-    logger.info(f"Sync complete: +{stats['added']} updated:{stats['updated']} deleted:{stats['deleted']} "\
-                  "skipped:{stats['skipped']}")
-    return stats
-
+        logger.debug(f"Cleaned up orphaned file: {source}")
 
 def retrieve_relevant_chunks(query: str, collection, embedder: HuggingFaceEmbeddings, top_k: int = 5) -> list[dict]:
     try:
