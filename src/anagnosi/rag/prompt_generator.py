@@ -1,15 +1,11 @@
 from loguru import logger
 
-from anagnosi.rag.rag import get_rag_from_md_notes
-
 
 class PromptGenerator:
-    def generate(self, query: str):
-        retrieved = get_rag_from_md_notes(query)
-
+    def generate(self, query: str, retrieved_chunks: list[dict]):
         context_text = "\n\n".join([
             f"### Source File: {chunk['source']}.md (Chunk #{chunk['chunk_index']})\n{chunk['content']}"
-            for chunk in retrieved
+            for chunk in retrieved_chunks
         ])
 
         system_prompt = (
