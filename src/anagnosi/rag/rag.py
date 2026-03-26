@@ -88,7 +88,7 @@ def ingest_documents(chunks: List[str], collection, embedder: HuggingFaceEmbeddi
     try:
         embeddings = embedder.embed_documents(chunks)
 
-        collection.add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
+        collection.upsert(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metadatas)
         logger.info(f"Ingested {len(embeddings)} chunks from {source}")
         return len(embeddings)
     except Exception as e:
