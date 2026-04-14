@@ -1,0 +1,23 @@
+services:
+  # ── Anagnosi CLI ─────────────────────────────────────────────────────────────
+  anagnosi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: anagnosi:latest
+    container_name: anagnosi-app
+    env_file:
+      - .env
+    environment:
+      APP_ROOT_PATH: /data
+      DEBUG_MODE: "false"
+    volumes:
+      - ${APP_ROOT_PATH}:/data
+      - hf_cache:/cache
+
+    stdin_open: true
+    tty: true
+
+volumes:
+  hf_cache:
