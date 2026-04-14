@@ -147,7 +147,7 @@ def cmd_add(content: str = typer.Argument(..., help="Note content"), title: str 
         await manager.start()
 
         try:
-            result = await manager.run(add_to_inbox, content=content, title=title)
+            result = await manager.run(add_to_inbox, content=content, title=title, source="cli")
             console.print(f"[green]Success:[/green] {result['filename']}")
             return 0
         except Exception as e:

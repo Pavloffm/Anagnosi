@@ -3,7 +3,7 @@ from datetime import datetime
 from anagnosi.config import paths
 
 
-async def add_to_inbox(content: str, title: str = "Note") -> dict:
+async def add_to_inbox(content: str, title: str, source: str) -> dict:
     inbox = paths.inbox_dir
     inbox.mkdir(parents=True, exist_ok=True)
 
@@ -12,7 +12,7 @@ async def add_to_inbox(content: str, title: str = "Note") -> dict:
     filename = f"{ts}_{safe_title.replace(' ', '_')}.md"
     filepath = inbox / filename
 
-    metadata = f"---\ntitle: {title}\ncreated: {datetime.now().isoformat()}\nsource: cli\n---\n\n"
+    metadata = f"---\ntitle: {title}\ncreated: {datetime.now().isoformat()}\nsource: {source}\n---\n\n"
     filepath.write_text(metadata + content.strip() + "\n", encoding="utf-8")
 
     return {"filename": filename, "path": str(filepath)}

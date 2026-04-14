@@ -3,9 +3,9 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore",)
+    model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", env_file_encoding="utf-8", extra="ignore",)
 
     app_root_path: Path = Field(default=Path.cwd(), validation_alias="APP_ROOT_PATH")
     hf_token: str = Field(default="", validation_alias="HF_TOKEN")
@@ -42,5 +42,10 @@ class Settings(BaseSettings):
     ollama_default_timeout: int = Field(default=120, validation_alias="OLLAMA_DEFAULT_TIMEOUT")
     ollama_default_temperature: float = Field(default=0.1, validation_alias="OLLAMA_DEFAULT_TEMPERATURE")
     ollama_default_num_ctx: int = Field(default=4096, validation_alias="OLLAMA_DEFAULT_NUM_CTX")
+
+    telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
+    telegram_allowed_user_ids: str = Field(default="", validation_alias="TELEGRAM_ALLOWED_USER_IDS")
+    telegram_note_prefix: str = Field(default="!", validation_alias="TELEGRAM_NOTE_PREFIX")
+    telegram_auto_title_words: int = Field(default=3, validation_alias="TELEGRAM_AUTO_TITLE_WORDS")
 
 settings = Settings()
