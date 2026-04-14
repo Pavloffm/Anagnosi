@@ -31,7 +31,6 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH" \
-    # HuggingFace model cache inside a named volume
     HF_HOME="/cache/huggingface" \
     TRANSFORMERS_CACHE="/cache/huggingface"
 
@@ -52,5 +51,5 @@ ENV APP_ROOT_PATH=/data \
     OLLAMA_BASE_URL=http://ollama:11434 \
     DEBUG_MODE=false
 
-ENTRYPOINT ["anagnosi"]
-CMD ["--help"]
+ENTRYPOINT []
+CMD ["python", "-m", "anagnosi.connections.telegram_bot"]
