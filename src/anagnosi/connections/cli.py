@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import sys
@@ -11,6 +12,8 @@ from rich.panel import Panel
 from rich.status import Status
 
 from anagnosi.config import paths
+from anagnosi.connections.manager import ConnectionManager
+from anagnosi.connections.operations import add_to_inbox
 from anagnosi.rag.llm_client import LocalTransformersLLM, OllamaLLMClient
 from anagnosi.rag.prompt_generator import PromptGenerator
 from anagnosi.rag.rag import (
@@ -136,6 +139,24 @@ def cmd_ask_local_llm(query: str = typer.Argument(..., help="Your question"), to
         console.print(Panel(f"Local LLM failed: {e}", style="red"))
         console.print("\n[yellow]Tip: Ensure you have enough RAM/VRAM for the model.[/]")
         raise typer.Exit(1) from None
+
+@app.command("add")
+def cmd_add(content: str = typer.Argument(..., help="Note content"), title: str = typer.Option(None, "--title", "-t", help="Optional title")):
+    async def _run():
+        manager = ConnectionManager()
+        await manager.start()
+
+        try:
+            result = await manager.run(add_to_inbox, content=content, title=title)
+            console.print(f"[green]Success:[/green] {result['filename']}")
+            return 0
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            return 1
+        finally:
+            await manager.stop()
+
+    raise typer.Exit(code=asyncio.run(_run()))
 
 if __name__ == '__main__':
     app()
