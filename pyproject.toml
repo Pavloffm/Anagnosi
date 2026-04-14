@@ -30,7 +30,7 @@ description = ""
 authors = []
 
 [tool.poetry.scripts]
-anagnosi = "anagnosi.cli:app"
+anagnosi = "anagnosi.connections.cli:app"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
