@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     home_file: str = "0000_home.md"
 
-    embedding_model_name: str = Field(default="BAAI/bge-small-en-v1.5", validation_alias="EMBEDDING_MODEL_NAME")
+    embedding_model_name: str = Field(default="BAAI/bge-m3", validation_alias="EMBEDDING_MODEL_NAME")
     rag_embedding_batch_size: int = Field(default=32, validation_alias="RAG_EMBEDDING_BATCH_SIZE")
 
     rag_chunk_size: int = Field(default=256, validation_alias="RAG_CHUNK_SIZE")
