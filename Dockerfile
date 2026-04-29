@@ -1,30 +1,22 @@
 FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    POETRY_VERSION=1.8.5 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_NO_INTERACTION=1
+    PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         build-essential \
+        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://install.python-poetry.org | POETRY_VERSION=2.3.4 python3 -
-ENV PATH="$POETRY_HOME/bin:$PATH"
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
-COPY pyproject.toml poetry.lock* README.md ./
+COPY pyproject.toml uv.lock README.md ./
 COPY src/ ./src/
 
-
-RUN poetry run pip install torch --index-url https://download.pytorch.org/whl/cpu
-
-RUN poetry install --without dev --no-root \
-    && poetry install --without dev
-
+RUN uv sync --no-dev --frozen
 
 FROM python:3.12-slim AS runtime
 
