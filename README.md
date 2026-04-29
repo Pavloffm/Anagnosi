@@ -1,6 +1,6 @@
 # Anagnosi - Personal knowledge base
 [![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Poetry](https://img.shields.io/badge/poetry-1.8+-blue.svg)](https://python-poetry.org/)
+[![uv](https://img.shields.io/badge/uv-astro-blue.svg)](https://docs.astral.sh/uv/)
 [![CI](https://github.com/Pavloffm/Anagnosi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Pavloffm/Anagnosi/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -16,7 +16,7 @@
 
 ## Prerequisites
 - Python 3.12+
-- [Poetry](https://python-poetry.org/docs/#installation) for dependency management
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) for dependency management
 - [Ollama](https://ollama.com/download) Required for `anagnosti ask`
 ## Installation
 ### 1: Clone the Repository
@@ -26,8 +26,8 @@ cd Anagnosi
 ```
 ### 2: Install Dependencies
 ```commandline
-poetry install
-poetry shell
+uv sync
+source .venv/bin/activate  # On Linux/macOS. For Windows: .venv\Scripts\activate
 ```
 
 ### 3: Configure Environment
@@ -208,21 +208,21 @@ anagnosi ask-local "Explain RAG" --model "HuggingFaceTB/SmolLM2-135M-Instruct" -
 
 ```bash
 # All tests
-poetry run pytest
+uv run pytest
 
 # With coverage
-poetry run pytest --cov=anagnosi --cov-report=html
+uv run pytest --cov=anagnosi --cov-report=html
 
 # Specific test file
-poetry run pytest tests/unit/test_rag.py -v
+uv run pytest tests/unit/test_rag.py -v
 ```
 ### Code Quality
 ```bash
 # Lint with Ruff
-poetry run ruff check src/ tests/
+uv run ruff check src/ tests/
 
 # Auto-fix issues
-poetry run ruff check --fix src/ tests/
+uv run ruff check --fix src/ tests/
 
 # Pre-commit hooks
 pre-commit install
